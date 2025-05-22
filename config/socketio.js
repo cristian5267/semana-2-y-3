@@ -1,38 +1,22 @@
 import { Products } from "../entity/products.entity.js";
+import { Orders } from "../entity/orders.entity.js";    
+import { Users } from "../entity/users.entity.js";
 
 export const setupSocket = (socketio) => {
     socketio.on("connection", (socketLocal) => {
-        console.log("socket connected");
+        console.log("Socket connected");
 
-        socketLocal.on("update-stock", async (payload) => {
-            let product = await Products.findOne({
-                where: {
-                    id: payload.productId,
-                },
-            });
+        socketLocal.on("update-delivery-time", async (payload) => {
+            
+            console.log(`por favor espere el tiempo de entrega se esta actualizando: ${payload.orderId}`);
 
-            if (!product.stock) {
-                console.log("No hay stock para el id: " + payload.productId);
-            } else {
-                await Products.update(
-                    {
-                        stock: product.stock - 1,
-                    },
-                    {
-                        where: {
-                            id: payload.productId,
-                        },
-                    }
-                );
+          
+            const updatedDeliveryTime = {
+                orderId: payload.orderId,
+                estimatedDeliveryTime: payload.estimatedDeliveryTime
+            };
 
-                product = await Products.findOne({
-                    where: {
-                        id: payload.productId,
-                    },
-                });
-
-                socketio.emit("stock-updated", product);
-            }
+            socketio.emit("tiempo de entrega actualizado", updatedDeliveryTime);
         });
     });
 };
