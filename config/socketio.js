@@ -1,6 +1,5 @@
 import { Products } from "../entity/products.entity.js";
-import { Orders } from "../entity/orders.entity.js";    
-import { Users } from "../entity/users.entity.js";
+
 
 export const setupSocket = (socketio) => {
     socketio.on("connection", (socketLocal) => {
