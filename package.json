@@ -8,16 +8,16 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/luis-alvarez1/backend-2025.git"
+        "url": "https://github.com/cristian5267/semana-2-y-3.git"
     },
     "keywords": [],
     "author": "",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/luis-alvarez1/backend-2025/issues"
+        "url": "https://github.com/cristian5267/semana-2-y-3.git"
     },
-    "homepage": "https://github.com/luis-alvarez1/backend-2025#readme",
-    "description": "",
+    "homepage": "",
+    "description": "https://github.com/cristian5267/semana-2-y-3.git",
     "dependencies": {
         "body-parser": "^2.2.0",
         "cors": "^2.8.5",
