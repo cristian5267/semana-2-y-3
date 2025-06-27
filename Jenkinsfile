@@ -1,5 +1,9 @@
 pipeline {
     agent any
+    tools {
+        git 'Git predeterminado'  // Debe coincidir con el nombre que configuraste
+    }
+    // Resto de tu pipeline...
     environment {
         // Configuración Docker Hub
         DOCKER_IMAGE = '24cristiano/semana-2-y-3'
