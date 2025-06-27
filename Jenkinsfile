@@ -1,6 +1,12 @@
 pipeline {
     agent any
 
+    environment {
+        DOCKER_HUB = credentials('docker-hub-credentials')
+        DOCKER_IMAGE = 'tu_usuario_docker/tu_imagen:latest'
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -8,36 +14,33 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build Docker Image') {
             steps {
-                // Comando para construir tu aplicación
-                sh 'echo "Building the application"'
-                // sh 'npm install' // Ejemplo para una aplicación Node.js
-                // sh 'npm run build' // Ejemplo para una aplicación Node.js
+                script {
+                    docker.build(DOCKER_IMAGE)
+                }
             }
         }
 
-        stage('Test') {
+        stage('Push Docker Image') {
             steps {
-                // Comando para ejecutar pruebas
-                sh 'echo "Running tests"'
-                // sh 'npm test' // Ejemplo para una aplicación Node.js
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        docker.image(DOCKER_IMAGE).push()
+                    }
+                }
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy with Docker Compose') {
             steps {
-                // Comando para desplegar tu aplicación
-                sh 'echo "Deploying the application"'
-                // sh './deploy.sh' // Ejemplo de un script de despliegue
+                script {
+                    sshagent(['tu_credencial_ssh']) {
+                        sh "ssh -o StrictHostKeyChecking=no usuario@tu_maquina_virtual_azure 'docker-compose -f ${DOCKER_COMPOSE_FILE} down && docker-compose -f ${DOCKER_COMPOSE_FILE} up -d'"
+                    }
+                }
             }
-        }
-    }
-
-    post {
-        always {
-            // Limpieza o notificaciones
-            echo 'Pipeline completed.'
         }
     }
 }
+
