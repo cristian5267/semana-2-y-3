@@ -22,6 +22,7 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'master', 
+                credentialsId: 'github-token',
                 url: 'https://github.com/cristian5267/semana-2-y-3.git'
             }
         }
