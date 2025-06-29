@@ -3,7 +3,7 @@ pipeline {
     
     // 1. Especifica la herramienta Git (esto soluciona tu error)
     tools {
-        git 'Git'  // Nombre debe coincidir con tu configuración en Jenkins
+        git 'Default'  // Nombre debe coincidir con tu configuración en Jenkins
     }
     
     environment {
