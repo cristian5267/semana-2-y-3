@@ -1,29 +1,31 @@
 pipeline {
     agent any
     
-    // 1. Especifica la herramienta Git (esto soluciona tu error)
     tools {
-        git 'Default Git'  // Nombre debe coincidir con tu configuración en Jenkins
+        git 'Default'  // Nombre de la herramienta Git configurada en Jenkins
+        dockerTool 'docker'  // Asegúrate de tener Docker instalado y configurado
     }
     
     environment {
-        // Configura Docker Hub
+        // Configuración Docker Hub
         DOCKER_IMAGE = '24cristiano/semana-2-y-3'
         DOCKER_TAG = "${BUILD_NUMBER}"
         
-        // Configura VM Azure
+        // Configuración Azure VM
         VM_IP = '20.3.132.206'
         VM_USER = 'kriss'
         APP_DIR = '/home/kriss/app'
     }
     
     stages {
-        /* Etapa 1: Clonar repositorio (ahora usará la herramienta configurada) */
+        /* Etapa 1: Clonar repositorio público (sin credenciales) */
         stage('Checkout Code') {
             steps {
-                git branch: 'master', 
-                credentialsId: 'github-token',
-                url: 'https://github.com/cristian5267/semana-2-y-3.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'master']],
+                    userRemoteConfigs: [[url: 'https://github.com/cristian5267/semana-2-y-3.git']]
+                ])
             }
         }
 
@@ -31,7 +33,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", ".")
                 }
             }
         }
@@ -47,18 +49,18 @@ pipeline {
             }
         }
 
-        /* Etapa 4: Desplegar en Azure */
+        /* Etapa 4: Desplegar en Azure VM */
         stage('Deploy to Azure VM') {
             steps {
                 sshagent(['azure-vm-ssh']) {
-                    sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/"
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} '
-                            cd ${APP_DIR} && 
-                            docker-compose down && 
-                            docker-compose pull && 
+                        scp -o StrictHostKeyChecking=no docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} "
+                            cd ${APP_DIR}
+                            docker-compose down
+                            docker-compose pull
                             docker-compose up -d
-                        '
+                        "
                     """
                 }
             }
@@ -66,29 +68,15 @@ pipeline {
     }
     
     post {
+        always {
+            cleanWs()  // Limpiar espacio de trabajo
+        }
         success {
             echo '✅ ¡Despliegue exitoso!'
         }
         failure {
             echo '❌ Error en el despliegue'
+            // Aquí podrías agregar notificaciones por email/Slack
         }
     }
 }
-
-pipeline {
-    agent any
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/cristian5267/semana-2-y-3.git'
-            }
-        }
-        stage('Build') {
-            steps {
-                sh 'echo "Construyendo la aplicación..."'
-                // Ejemplo para Node.js: sh 'npm install && npm run build'
-            }
-        }
-    }
-}
- (Agrego Jenkinsfile para el pipeline)
