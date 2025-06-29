@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     tools {
-        git 'Default'  // Nombre de la herramienta Git configurada en Jenkins
+        git 'Git'  // Nombre de la herramienta Git configurada en Jenkins
         dockerTool 'docker'  // Asegúrate de tener Docker instalado y configurado
     }
     
