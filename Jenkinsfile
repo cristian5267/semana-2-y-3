@@ -3,7 +3,7 @@ pipeline {
     
     // 1. Especifica la herramienta Git (esto soluciona tu error)
     tools {
-        git 'Default Git'  // Nombre debe coincidir con tu configuración en Jenkins
+        git 'Git'  // Nombre debe coincidir con tu configuración en Jenkins
     }
     
     environment {
@@ -22,7 +22,6 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'master', 
-                credentialsId: 'github-token',
                 url: 'https://github.com/cristian5267/semana-2-y-3.git'
             }
         }
