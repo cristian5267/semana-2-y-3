@@ -8,7 +8,7 @@ pipeline {
     
     environment {
         // Configura Docker Hub
-        DOCKER_IMAGE = '24cristiano/semana-2-y-3'
+        DOCKER_IMAGE = '24cristian/semana-2-y-3'
         DOCKER_TAG = "${BUILD_NUMBER}"
         
         // Configura VM Azure
