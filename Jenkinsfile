@@ -2,13 +2,13 @@ pipeline {
     agent any
     
     tools {
-        git 'Git'  // Nombre de la herramienta Git configurada en Jenkins
-        dockerTool 'docker'  // Asegúrate de tener Docker instalado y configurado
+        git 'Git'  // Correcto si está configurado en Jenkins
+        // dockerTool 'docker'  // Eliminado (no necesario si Docker ya está instalado en el nodo)
     }
     
     environment {
-        // Configuración Docker Hub
-        DOCKER_IMAGE = '24cristiano/semana-2-y-3'
+        // Configuración Docker Hub (corregido nombre de usuario)
+        DOCKER_IMAGE = '24cristian/semana-2-y-3'  // Corregido de '24cristiano' a '24cristian'
         DOCKER_TAG = "${BUILD_NUMBER}"
         
         // Configuración Azure VM
@@ -18,13 +18,14 @@ pipeline {
     }
     
     stages {
-        /* Etapa 1: Clonar repositorio público (sin credenciales) */
+        /* Etapa 1: Clonar repositorio */
         stage('Checkout Code') {
             steps {
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: 'master']],
-                    userRemoteConfigs: [[url: 'https://github.com/cristian5267/semana-2-y-3.git']]
+                    userRemoteConfigs: [[url: 'https://github.com/cristian5267/semana-2-y-3.git']],
+                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'src']]  // Clona en subdirectorio
                 ])
             }
         }
@@ -33,7 +34,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", ".")
+                    // Asegúrate de que el Dockerfile esté en el repositorio
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "src")  // Construye desde el directorio src
                 }
             }
         }
@@ -49,17 +51,38 @@ pipeline {
             }
         }
 
-        /* Etapa 4: Desplegar en Azure VM */
+        /* Etapa 4: Desplegar en Azure VM - MEJORADA */
         stage('Deploy to Azure VM') {
             steps {
                 sshagent(['azure-vm-ssh']) {
+                    // 1. Crear directorio si no existe
                     sh """
-                        scp -o StrictHostKeyChecking=no docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/
                         ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} "
-                            cd ${APP_DIR}
-                            docker-compose down
-                            docker-compose pull
-                            docker-compose up -d
+                            mkdir -p ${APP_DIR} || exit 1
+                        "
+                    """
+                    
+                    // 2. Copiar docker-compose.yml con verificación
+                    sh """
+                        if [ -f "src/docker-compose.yml" ]; then
+                            scp -o StrictHostKeyChecking=no src/docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/ || exit 1
+                        else
+                            echo "ERROR: docker-compose.yml no encontrado en el repositorio"
+                            exit 1
+                        fi
+                    """
+                    
+                    // 3. Ejecutar con manejo de errores
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} "
+                            cd ${APP_DIR} || exit 1
+                            echo 'Contenido de docker-compose.yml:'
+                            cat docker-compose.yml || exit 1
+                            docker-compose down || true
+                            docker-compose pull || exit 1
+                            docker-compose up -d || exit 1
+                            echo 'Contenedores en ejecución:'
+                            docker ps
                         "
                     """
                 }
@@ -69,14 +92,15 @@ pipeline {
     
     post {
         always {
-            cleanWs()  // Limpiar espacio de trabajo
+            cleanWs()
         }
         success {
             echo '✅ ¡Despliegue exitoso!'
+            // Opcional: Notificación por Slack/Email
         }
         failure {
             echo '❌ Error en el despliegue'
-            // Aquí podrías agregar notificaciones por email/Slack
+            // Opcional: Notificación por Slack/Email
         }
     }
 }
