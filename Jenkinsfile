@@ -1,29 +1,32 @@
 pipeline {
     agent any
     
-    // 1. Especifica la herramienta Git (esto soluciona tu error)
     tools {
-        git 'Default Git'  // Nombre debe coincidir con tu configuración en Jenkins
+        git 'Git'  // Correcto si está configurado en Jenkins
+        // dockerTool 'docker'  // Eliminado (no necesario si Docker ya está instalado en el nodo)
     }
     
     environment {
-        // Configura Docker Hub
-        DOCKER_IMAGE = '24cristiano/semana-2-y-3'
+        // Configuración Docker Hub (corregido nombre de usuario)
+        DOCKER_IMAGE = '24cristian/semana-2-y-3'  // Corregido de '24cristiano' a '24cristian'
         DOCKER_TAG = "${BUILD_NUMBER}"
         
-        // Configura VM Azure
+        // Configuración Azure VM
         VM_IP = '20.3.132.206'
         VM_USER = 'kriss'
         APP_DIR = '/home/kriss/app'
     }
     
     stages {
-        /* Etapa 1: Clonar repositorio (ahora usará la herramienta configurada) */
+        /* Etapa 1: Clonar repositorio */
         stage('Checkout Code') {
             steps {
-                git branch: 'master', 
-                credentialsId: 'github-token',
-                url: 'https://github.com/cristian5267/semana-2-y-3.git'
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'master']],
+                    userRemoteConfigs: [[url: 'https://github.com/cristian5267/semana-2-y-3.git']],
+                    extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'src']]  // Clona en subdirectorio
+                ])
             }
         }
 
@@ -31,7 +34,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    // Asegúrate de que el Dockerfile esté en el repositorio
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", "src")  // Construye desde el directorio src
                 }
             }
         }
@@ -47,18 +51,39 @@ pipeline {
             }
         }
 
-        /* Etapa 4: Desplegar en Azure */
+        /* Etapa 4: Desplegar en Azure VM - MEJORADA */
         stage('Deploy to Azure VM') {
             steps {
                 sshagent(['azure-vm-ssh']) {
-                    sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/"
+                    // 1. Crear directorio si no existe
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} '
-                            cd ${APP_DIR} && 
-                            docker-compose down && 
-                            docker-compose pull && 
-                            docker-compose up -d
-                        '
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} "
+                            mkdir -p ${APP_DIR} || exit 1
+                        "
+                    """
+                    
+                    // 2. Copiar docker-compose.yml con verificación
+                    sh """
+                        if [ -f "src/docker-compose.yml" ]; then
+                            scp -o StrictHostKeyChecking=no src/docker-compose.yml ${VM_USER}@${VM_IP}:${APP_DIR}/ || exit 1
+                        else
+                            echo "ERROR: docker-compose.yml no encontrado en el repositorio"
+                            exit 1
+                        fi
+                    """
+                    
+                    // 3. Ejecutar con manejo de errores
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${VM_USER}@${VM_IP} "
+                            cd ${APP_DIR} || exit 1
+                            echo 'Contenido de docker-compose.yml:'
+                            cat docker-compose.yml || exit 1
+                            docker-compose down || true
+                            docker-compose pull || exit 1
+                            docker-compose up -d || exit 1
+                            echo 'Contenedores en ejecución:'
+                            docker ps
+                        "
                     """
                 }
             }
@@ -66,29 +91,16 @@ pipeline {
     }
     
     post {
+        always {
+            cleanWs()
+        }
         success {
             echo '✅ ¡Despliegue exitoso!'
+            // Opcional: Notificación por Slack/Email
         }
         failure {
             echo '❌ Error en el despliegue'
+            // Opcional: Notificación por Slack/Email
         }
     }
 }
-
-pipeline {
-    agent any
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/cristian5267/semana-2-y-3.git'
-            }
-        }
-        stage('Build') {
-            steps {
-                sh 'echo "Construyendo la aplicación..."'
-                // Ejemplo para Node.js: sh 'npm install && npm run build'
-            }
-        }
-    }
-}
- (Agrego Jenkinsfile para el pipeline)
