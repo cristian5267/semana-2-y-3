@@ -1,7 +1,0 @@
-version: '3.8'
-services:
-  app:
-    image: 24cristiano/semana-2-y-3:${DOCKER_TAG:-latest}
-    ports:
-      - "80:3000"  # Ajusta los puertos según tu aplicación
-    restart: always
