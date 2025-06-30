@@ -1,6 +1,0 @@
-version: '3'
-services:
-  tu_servicio:
-    image: 24cristian/semana-2-y-3:latest
-    ports:
-      - "8080:8080"
